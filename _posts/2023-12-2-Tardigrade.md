@@ -70,10 +70,12 @@ Up to this point, we’ve examined persistence through cronjobs, bash configurat
 A traditional method is to inspect `/etc/passwd`, which lists all users on the machine. Most of these are system or daemon accounts, not actual human operators, but they can still be leveraged for persistence. While scanning through the list, one user consistently stood out to me-a shadowy presence that felt out of place: the `nobody` user.
 
 This user is normal on Linux systems, but its unusual activity in this context made it an ideal candidate for a persistence mechanism. Identifying it required connecting past knowledge with intuition built from prior experience. Without that recognition, I might have spent a long time searching for other, less obvious clues.
+
 ## Task 6 Q1: Finally, as you've already found the final persistence mechanism, there's value in going all the way through to the end. The adversary left a golden nugget of "advise" somewhere. What is the nugget?
 With the `nobody` user identified as the final persistence mechanism, I shifted to direct verification. I attempted an `ssh` login using the username of the service we suspected of compromise. To my advantage, the login credentials were the same as the username, a stroke of luck that made the next steps straightforward.
 
 Once logged in, I ran ls -al in the home directory to inspect hidden files and dotfiles. There, I found the `.youfoundme` file, which contained the final flag. This reinforced a key lesson: persistence mechanisms often hide in plain sight, and careful inspection of system accounts, even the seemingly mundane ones, can reveal critical artifacts.
+
 ![question6info](/foundlastanswerls.png)
 
 The `.youfoundme` file looks interesting. Just `cat` out the contents of that file to obtain the flag.
