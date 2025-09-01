@@ -5,6 +5,7 @@ date: 2023-12-02 09:08:00 -500
 categories: [TryHackMe]
 tags: [digital-forensics, blue-team]     # TAG names should always be lowercase
 media_subpath: /assets/img/Tardigrade/
+image: TardigradeFrontImage.png
 ---
 
 Today, we will be exploring TryHackMe's [Tardigrade](https://tryhackme.com/room/tardigrade) room. This challenge is marked as medium difficulty and involves a quick look at fundamental Linux forensics and persistence techniques. Like the previous room I completed, this room is still more a guided learning experience than an actual challenge. That's okay, though. I'll work my way to additional blue-team themed challenges that involve less handholding soon enough.

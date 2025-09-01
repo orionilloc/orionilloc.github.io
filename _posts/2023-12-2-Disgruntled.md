@@ -5,6 +5,7 @@ date: 2023-11-28 09:10:00 -500
 categories: [TryHackMe]
 tags: [digital-forensics, blue-team]     # TAG names should always be lowercase
 media_subpath: /assets/img/Disgruntled/
+image: DisgruntledFrontImage.png
 ---
 
 Today, we will be exploring TryHackMe's [Disgruntled](https://tryhackme.com/room/disgruntled) room. This challenge is marked as easy difficulty and involves fundamental Linux forensics. The room is more of a guided learning experience than a challenge, but it provides a good opportunity to practice multiple approaches and commands to reach the same answer.
@@ -30,6 +31,7 @@ Answer can be found from the above process.
 
 ## Q5: A script file was opened using the "vi" text editor. What is the name of this file?
 By examining the hidden `.viminfo` file within the relevant home directory, we can identify the filename that was opened with vi.
+
 ![question5info](Q5ScriptFileOpened.png)
 
 ## Q6: What is the command used that created the file `bomb.sh`?

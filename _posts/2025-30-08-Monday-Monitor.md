@@ -5,6 +5,7 @@ date: 2025-08-30 10:00:00 -500
 categories: [TryHackMe]
 tags: [wazuh,windows,digital-forensics,blue-team]     # TAG names should always be lowercase
 media_subpath: /assets/img/MondayMonitor/
+image: MondayMonitorFrontImage.png
 ---
 
 This room, [Monday Monitor](https://tryhackme.com/room/mondaymonitor), simulates an incident investigation where the attacker establishes access, persistence, and moves toward credential theft and data exfiltration. I worked through each question systematically, treating it less like a quiz and more like a professional forensic exercise even if it's meant to be an easier room.
