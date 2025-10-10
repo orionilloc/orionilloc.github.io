@@ -11,7 +11,7 @@ image: Keycloak1FrontImage.png
 
 ## Why build this?
 
-After completing my AWS Solutions Architect - Associate (SAA) certification, I needed to transition from theoretical knowledge to demonstrable, practical experience. My professional interests- systems administration, security engineering, and cloud architecture- mandated a project that involved more than just deploying a basic and boring stack, like the ones often seen in the [Cloud Resume Challenge](https://cloudresumechallenge.dev/docs/the-challenge/aws/). 
+After completing my AWS Solutions Architect - Associate (SAA) certification, I needed to transition from theoretical knowledge to demonstrable, practical experience. My professional interests- systems administration, security engineering, and cloud architecture- mandated a project that involved more than just deploying a boilerpalte stack, like the ones often seen in the [Cloud Resume Challenge](https://cloudresumechallenge.dev/docs/the-challenge/aws/). 
 
 ## The IdP Trade-off
 
