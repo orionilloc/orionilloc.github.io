@@ -10,7 +10,7 @@ image: Keycloak2FrontImage.jpg
 
 ## First Forays into Terraform
 
-Previously, we successfully established the foundational governance perimeter-a secure, multi-account environment governed by IAM Identity Center and centralized CloudTrail. Now, we make the critical transition to using Infrastructure as Code (IaC) to declare what the environment should look like.
+Previously, we successfully established the foundational governance perimeter-a secure, multi-account environment governed by IAM Identity Center and a centralized CloudTrail trail. Now, we make the critical transition to using Infrastructure as Code (IaC) to declare what the environment should look like.
 
 This phase required significant research and tooling adoption even before writing anything. I had to effectively scribble out and diagram what I wanted. Having zero prior exposure to Terraform, the entire codebase for this project began by following the official HashiCorp Terraform "Get Started" tutorial [here](https://developer.hashicorp.com/terraform/tutorials/aws-get-started). This ensured a foundational understanding based on authoritative quick-start documentation, rather than Youtuber/influencer content. There's nothing worse than a 15 minute video about a two paragraph concept in documentation. The tutorial is fairly basic but it forces you to start thinking about what resources you need to declare or specify in your architecture. It's not all default VPCs and security groups out here! I particularly enjoyed this part. It's quite fun and dreamy, honestly. The complexity would quickly ramp up as I moved from static resource deployment to storing/using dynamic secrets and handling script errors.
 

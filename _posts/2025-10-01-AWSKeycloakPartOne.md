@@ -11,13 +11,13 @@ image: Keycloak1FrontImage.png
 
 ## Why build this?
 
-After completing my AWS Solutions Architect - Associate (SAA) certification, I needed to transition from theoretical knowledge to demonstrable, practical experience. My professional interests- systems administration, security engineering, and cloud architecture- mandated a project that involved more than just deploying a boilerpalte stack, like the ones often seen in the [Cloud Resume Challenge](https://cloudresumechallenge.dev/docs/the-challenge/aws/). 
+After completing my AWS Solutions Architect - Associate (SAA) certification, I needed to transition from theoretical knowledge to demonstrable, practical experience. My professional interests- systems administration, security engineering, and cloud architecture- mandated a project that involved more than just deploying a boilerplate stack, like the ones often seen in the [Cloud Resume Challenge](https://cloudresumechallenge.dev/docs/the-challenge/aws/). 
 
 ## The IdP Trade-off
 
-My initial thought was to use a managed service like Okta and hook it up directly to IAM Identity Center. This was the low-friction path: an easy win that would have allowed me to dive immediately into configuring and maintaining AWS security products with test workloads (WAF, GuardDuty, advanced logging, etc.).
+My initial thought was to use a managed service like Okta and hook it up directly to IAM Identity Center. This would have been the low-friction path: an easy win that would have allowed me to dive immediately into configuring and maintaining AWS security products with test workloads (WAF, GuardDuty, advanced logging, etc.).
 
-However, I wanted more hands-on infrastructure work to start, and the external registration [requirements](https://developer.okta.com/docs/reference/org-defaults/) for Okta's Integrator Plan were a convenient roadblock. You can't use personal Gmail, Proton Mail, or SimpleLogin addresses. I could have registered a domain and applied a vanity email. I was too curious and eager to learn, though. My initial impulse for an "easy win" quickly turned into a much bigger, more interesting technical challenge. I decided to build one using Keycloak as the Identity Provider. This decision immediately elevated the project complexity, pushing me to solve for database persistence, secrets management, error detection, race conditions, containerization and the initial secure multi-account AWS foundation you'll read about below. My current setup isn't exactly production-grade, but I view it as a robust "secure toybox": a strong architectural concept built from the ground up.
+However, I wanted more hands-on infrastructure work to start, and the external registration [requirements](https://developer.okta.com/docs/reference/org-defaults/) for Okta's Integrator Plan were a convenient roadblock. You can't use personal Gmail, Proton Mail, or SimpleLogin addresses. I could have registered a domain and applied a vanity email. I was too curious and eager to learn, though. My initial impulse for an "easy win" quickly turned into a much bigger, more interesting technical challenge. I decided to build one using Keycloak as the identity provider. This decision immediately elevated the project complexity, pushing me to solve for database persistence, secrets management, error detection, race conditions, containerization and the initial secure multi-account AWS foundation you'll read about below. My current setup isn't exactly production-grade, but I view it as a robust "secure toybox": a strong architectural concept built from the ground up.
 
 # Establishing the Multi-Account Governance Perimeter
 
@@ -49,7 +49,7 @@ IAM Identity Center (SSO) was deployed at the Organization root to serve as the 
 
 ![EnableIAMIdentityCenter](EnableIAMIdentityCenter.png)
 
-> Note: I observed the expected delay in permission propagation, requiring a session refresh.
+> I observed the expected delay in permission propagation, requiring a session refresh.
 {: .prompt-tip }
 
 ![IAMIdentityCenterInvite](IAMIdentityCenterInvite.png)
@@ -64,12 +64,12 @@ Organizational CloudTrail: I implemented a single Organizational Trail configure
 
 ![CreateCloudTrailManagement](CreateCloudTrailManagement.png)
 
-> Correction Note: An initial setup with separate trails was abandoned for this consolidated organizational approach, as centralization is an architectural necessity for effective auditing.
-{: .prompt-warning }
+> An initial setup with separate trails was abandoned for this consolidated organizational approach, as centralization seemed much easier to manage long-term.
+{: .prompt-info }
 
 ![VerifiedCloudTrailLogs](VerifiedCloudTrailLogs.png)
 
-> Cost Caveat: While the logging of events is complimentary, storage charges apply for the dedicated S3 bucket holding the log files.
+> While the logging of events is complimentary, storage charges apply for the dedicated S3 bucket holding the log files.
 {: .prompt-info }
 
 - Cost Governance: To maintain responsible resource consumption, granular budget alerts were configured on the Development Account:

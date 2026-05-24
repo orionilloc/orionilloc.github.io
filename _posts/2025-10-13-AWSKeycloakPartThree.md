@@ -104,7 +104,7 @@ As I contemplated connecting Keycloak to IAM Identity Center, I realized I had t
 
 ## What's next? 
 
-I believe the next post must address the limitations of my current monolithic architecture (knowing it was a deliberate proof of concept). The current monolith is functional, secured, and persistent, achieving the goal of a fully automated, self-hosted Identity Provider; however, this architecture must now be critiqued for its single point of failure and lack of resilience — which is why we must now design the enterprise-grade future by refactoring the system to utilize AWS managed services and finally integrate with IAM Identity Center.
+I believe the next post must address the limitations of my current monolithic architecture (knowing it was a deliberate proof of concept). The current monolith is functional, secured, and persistent, achieving the goal of a fully automated, self-hosted identity provider; however, this architecture must now be critiqued for its single point of failure and lack of resilience — which is why we must now design the enterprise-grade future by refactoring the system to utilize AWS managed services and finally integrate with IAM Identity Center.
 
 I will pivot to thinking about what a more robust, AWS-managed system would look like, including:
 
