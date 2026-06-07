@@ -12,7 +12,7 @@ The Linux sysadmin role has been quietly absorbing DevOps tooling for the better
  
 That aside, I had been doing consistent shell scripting in the background alongside my regular work and found myself hitting the familiar ceiling: scripts that worked fine for one distro, broke on another, and had no real mechanism for ensuring idempotency across a fleet. I knew enough to recognize that Ansible was the right next thing to learn. What I was less sure about was how to actually learn it without production workloads to apply it to.
 
-## Starting Point: Jeff Geerling's Material
+## Starting with Jeff Geerling's Material
  
 The natural on-ramp was Jeff Geerling's [Ansible for DevOps](https://www.ansiblefordevops.com/) and his [COVID-era livestream series](https://www.youtube.com/watch?v=goclfp6a2IQ&list=PL2_OBreMn7FqZkvMYt6ATmgC0KAGGJNAN), which is an interesting artifact from that particular moment in time. A lot of people came to Ansible through exactly this material in 2020, and it holds up extremely well as an introduction or refresher. It's a little grim hearing and seeing references from late March/early April especially, as I'm writing this blog post from the same New York apartment room I was living in then.
  
