@@ -253,6 +253,7 @@ admin_group_map:
   Suse: root
 ```
 
+{% raw %}
 ```yaml
 # tasks/users.yml
 - name: Configure lab users
@@ -263,6 +264,7 @@ admin_group_map:
   loop: "{{ lab_users }}"
   when: item.is_admin | default(false)
 ```
+{% endraw %}
 
 The `ansible_os_family` value acts as the dictionary key. If a distribution resolves to an OS family not in the map, the `default('sudo')` filter catches it. Adding a new distribution means adding one line to `defaults/main.yml`, not modifying task logic.
 
