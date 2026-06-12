@@ -130,11 +130,15 @@ roles/
       packages.yml
       system.yml
       users.yml
+      updates.yml
     templates/
-      vimrc.j2
       motd.j2
+    files/
+      .vimrc
   os-hardening/
     defaults/
+      main.yml
+    handlers/
       main.yml
     tasks/
       main.yml
@@ -147,54 +151,73 @@ roles/
 
 ```yaml
 # roles/universal-baseline/tasks/main.yml
-- name: Install baseline packages
+- name: Apply package configuration
   ansible.builtin.import_tasks: packages.yml
 
 - name: Apply system configuration
   ansible.builtin.import_tasks: system.yml
 
-- name: Configure users
+- name: Apply user configuration
   ansible.builtin.import_tasks: users.yml
+
+- name: Apply system updates
+  ansible.builtin.import_tasks: updates.yml
 ```
 
 `defaults/main.yml` is data only. No task syntax, no conditionals. Just variable definitions that tasks reference.
 
 ```yaml
 # roles/universal-baseline/defaults/main.yml
-timezone: "America/New_York"
-
-baseline_packages:
-  - vim
-  - htop
-  - git
-  - tmux
-  - wget
-
 admin_group_map:
   RedHat: wheel
   Debian: sudo
   Suse: root
 
-lab_users:
-  - name: lab_admin
+baseline_packages:
+  - vim
+  - git
+  - wget
+
+timezone: "America/New_York"
+
+baseline_users:
+  - name: harrycallahan
+    uid: 1051
+    shell: /bin/bash
+    state: present
     is_admin: true
+
+  - name: lab_user1
+    uid: 1052
+    groups: lab_users
+    shell: /bin/bash
+    state: present
+    is_admin: false
+
+baseline_groups:
+  - name: lab_users
+    gid: 2001
+    state: present
 ```
 
-The playbook that invokes the roles is straightforward.
+The roles are invoked from two separate playbooks.
 
 ```yaml
 # playbooks/site.yml
-- name: Apply universal baseline
+- name: Apply universal baseline to all Linux nodes
   hosts: linux
   become: true
   roles:
-    - universal-baseline
+    - role: universal-baseline
+```
 
-- name: Apply OS hardening
+```yaml
+# playbooks/harden.yml
+- name: Apply OS hardening to all Linux nodes
   hosts: linux
   become: true
   roles:
-    - os-hardening
+    - role: os-hardening
 ```
 
 ## Cross-Distro Debugging
@@ -223,62 +246,97 @@ package curl-minimal-8.3.0-1.amzn2023.0.2.x86_64 from amazonlinux
 conflicts with curl provided by curl-8.17.0-1.amzn2023.0.1.x86_64
 ```
 
-The fix was removing `curl` from the universal package list in `defaults/main.yml` and handling it in a distro-specific conditional task.
+The packages task ended up fully distro-specific rather than using the abstract `package` module. The abstract module works well when package names are consistent across distributions, but this lab has enough per-distro variation: AL2023 needs `curl-minimal` instead of `curl`, Fedora requires `dnf5` rather than `dnf`, and the Debian family needs an explicit cache update before any package installation. A single generic task couldn't handle all of that cleanly.
 
 ```yaml
+{% raw %}
 # roles/universal-baseline/tasks/packages.yml
-- name: Install baseline packages
-  ansible.builtin.package:
-    name: "{{ baseline_packages }}"
-    state: present
+- name: Update apt cache on Debian family
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 0
+  when: ansible_os_family == "Debian"
 
-- name: Install curl on non-AL2023 nodes
-  ansible.builtin.package:
-    name: curl
+- name: Ensure baseline packages on Debian family
+  ansible.builtin.apt:
+    name: "{{ baseline_packages + ['curl'] }}"
     state: present
-  when: ansible_distribution != "Amazon"
+  when: ansible_os_family == "Debian"
+
+- name: Ensure baseline packages on Fedora
+  ansible.builtin.dnf5:
+    name: "{{ baseline_packages + ['curl', 'vim-enhanced'] }}"
+    state: present
+  when: ansible_distribution == "Fedora"
+
+- name: Ensure baseline packages on RedHat family
+  ansible.builtin.dnf:
+    name: "{{ baseline_packages + ['curl', 'vim-enhanced'] }}"
+    state: present
+  when: ansible_os_family == "RedHat" and ansible_distribution != "Amazon" and ansible_distribution != "Fedora"
+
+- name: Ensure baseline packages on AL2023
+  ansible.builtin.dnf:
+    name: "{{ baseline_packages + ['curl-minimal', 'vim-enhanced'] }}"
+    state: present
+  when: ansible_distribution == "Amazon"
+
+- name: Ensure baseline packages on SUSE family
+  community.general.zypper:
+    name: "{{ baseline_packages + ['curl'] }}"
+    state: present
+  when: ansible_os_family == "Suse"
+{% endraw %}
 ```
 
-This is also where the `ansible_distribution` vs `ansible_os_family` distinction matters. AL2023's `ansible_os_family` resolves to `RedHat`, not `Amazon`. A conditional written as `ansible_os_family != 'Amazon'` would never match anything and the task would run on AL2023 anyway. `ansible_distribution` resolves to `Amazon` correctly.
+This is also where the `ansible_distribution` vs `ansible_os_family` distinction matters in practice. AL2023's `ansible_os_family` resolves to `RedHat`. Without the explicit `ansible_distribution != "Amazon"` guard on the RedHat task, AL2023 would match it and try to install `curl` instead of `curl-minimal`, hitting the conflict. `ansible_distribution` resolves to `Amazon` for AL2023 specifically, which is what makes the per-distro targeting work correctly.
 
 ## The `admin_group_map` Pattern
 
-Different distributions use different groups to grant sudo access: `wheel` on Red Hat derived systems, `sudo` on Debian and Ubuntu, and `root` on openSUSE. The approach that ended up in the role uses a dictionary in `defaults/main.yml` and a single lookup in the task.
+Different distributions use different groups to grant sudo access: `wheel` on Red Hat derived systems, `sudo` on Debian and Ubuntu, and `root` on openSUSE. The approach that ended up in the role uses a dictionary in `defaults/main.yml` and a ternary expression in the task.
 
 ```yaml
-# defaults/main.yml
+# defaults/main.yml (excerpt)
 admin_group_map:
   RedHat: wheel
   Debian: sudo
   Suse: root
 ```
 
-{% raw %}
 ```yaml
+{% raw %}
 # tasks/users.yml
-- name: Configure lab users
+- name: Ensure baseline groups exist
+  ansible.builtin.group:
+    name: "{{ item.name }}"
+    state: "{{ item.state }}"
+  loop: "{{ baseline_groups }}"
+
+- name: Ensure baseline users are present
   ansible.builtin.user:
     name: "{{ item.name }}"
-    groups: "{{ admin_group_map[ansible_os_family] | default('sudo') }}"
+    uid: "{{ item.uid }}"
+    groups: "{{ admin_group_map[ansible_os_family] if item.is_admin else 'lab_users' }}"
+    shell: "{{ item.shell }}"
     append: true
-  loop: "{{ lab_users }}"
-  when: item.is_admin | default(false)
-```
+    state: "{{ item.state }}"
+  loop: "{{ baseline_users }}"
 {% endraw %}
+```
 
-The `ansible_os_family` value acts as the dictionary key. If a distribution resolves to an OS family not in the map, the `default('sudo')` filter catches it. Adding a new distribution means adding one line to `defaults/main.yml`, not modifying task logic.
+The `ansible_os_family` value acts as the dictionary key. Admin users get the correct sudo group for their distribution. Non-admin users land in `lab_users`. Adding a new distribution means adding one entry to `admin_group_map` in `defaults/main.yml`, not modifying task logic.
 
 This is a case where I needed help arriving at the pattern. The initial approach used chained conditionals and worked, but it was inelegant and hard to extend. Claude suggested the dictionary lookup approach.
 
 ## The os-hardening Role
 
-The `os-hardening` role applies a subset of CIS benchmark controls that are meaningful in this environment. Before writing any tasks, I spent time with OpenSCAP and the ComplianceAsCode content repository to understand what these controls actually do at the system level. The appeal of that project is that the benchmark content is machine-readable: you can trace a control from its XCCDF definition through to the remediation script and understand what is being changed and why. I've done a basic CIS Level 1 audit for an organization before and the gap between "controls on paper" and "controls verified on running systems" is not small. Having that reference made it easier to decide what was worth implementing in the lab versus what only makes sense in a different operational context.
+The `os-hardening` role applies a subset of CIS benchmark controls that are meaningful in this environment. Before writing any tasks, I spent time with OpenSCAP and the [ComplianceAsCode content repository](https://github.com/complianceascode/content) to understand what these controls actually do at the system level. The benchmark content is machine-readable: you can trace a control from its XCCDF definition through to the remediation script and understand what is being changed and why. I've done a basic CIS Level 1 audit for an organization before and the gap between "controls on paper" and "controls verified on running systems" is not small. Having that reference made it easier to decide what was worth implementing briefly in the lab versus what only makes sense in a different operational context.
 
 The full benchmark is described in its own documentation as a catalog rather than a checklist, and several controls either do not apply to cloud instances or conflict with how this lab is designed to operate.
 
 ### sysctl Parameters
 
-`sysctl.yml` sets kernel parameters for network hardening: disabling IP forwarding, disabling acceptance of source-routed packets, enabling SYN cookie protection, and restricting ptrace scope and kernel pointer exposure. These are applied via `ansible.posix.sysctl` with `sysctl_set: true` and `reload: true`.
+`sysctl.yml` sets kernel parameters for network hardening: disabling IP forwarding, disabling acceptance of source-routed packets, enabling SYN cookie protection, and restricting ptrace scope and kernel pointer exposure. Parameters are written to `/etc/sysctl.d/99-hardening.conf` and reloaded immediately.
 
 ```yaml
 # roles/os-hardening/tasks/sysctl.yml
@@ -286,10 +344,21 @@ The full benchmark is described in its own documentation as a catalog rather tha
   ansible.posix.sysctl:
     name: "{{ item.name }}"
     value: "{{ item.value }}"
-    sysctl_set: true
+    sysctl_file: /etc/sysctl.d/99-hardening.conf
+    state: present
     reload: true
-  loop: "{{ sysctl_hardening_params }}"
+  loop:
+    - { name: 'net.ipv4.conf.all.accept_source_route', value: '0' }
+    - { name: 'net.ipv4.conf.all.accept_redirects', value: '0' }
+    - { name: 'net.ipv4.tcp_syncookies', value: '1' }
+    - { name: 'net.ipv4.ip_forward', value: '0' }
+    - { name: 'kernel.yama.ptrace_scope', value: '1' }
+    - { name: 'kernel.kptr_restrict', value: '1' }
+    - { name: 'kernel.randomize_va_space', value: '2' }
+    - { name: 'fs.suid_dumpable', value: '0' }
 ```
+
+Using `sysctl_file` writes changes to a dedicated drop-in file rather than modifying `/etc/sysctl.conf` directly. This is worth noting because it keeps hardening changes isolated and easy to audit. `ansible.posix.sysctl` also reports `changed` vs `ok` accurately, which matters for idempotency: unlike a `shell` module call, it can tell the difference between setting a value and confirming one that's already correct.
 
 This ran cleanly across all five reachable nodes. The actual output is worth showing because it makes the scope of the changes concrete.
 
@@ -322,7 +391,18 @@ changed: [ansible-lab-Fedora-Managed]
 changed: [ansible-lab-SUSE-Managed]
 ```
 
-Debian and Ubuntu name the service `ssh`, not `sshd`. The fix is handling both names in the task, either by looping over both with `ignore_errors` or by adding a distro-specific conditional. AL2023, Fedora, and SUSE use `sshd` and changed cleanly.
+Debian and Ubuntu name the service `ssh`, not `sshd`. The fix is a single task with an inline ternary that resolves the correct name at runtime.
+
+```yaml
+# roles/os-hardening/tasks/sshd.yml
+- name: Stop and disable sshd service
+  ansible.builtin.service:
+    name: "{{ 'ssh' if ansible_os_family == 'Debian' else 'sshd' }}"
+    state: stopped
+    enabled: false
+```
+
+AL2023, Fedora, and SUSE use `sshd` and changed cleanly.
 
 `filesystem.yml` sets sticky bits on world-writable directories. Standard CIS control, no cross-distro issues.
 
