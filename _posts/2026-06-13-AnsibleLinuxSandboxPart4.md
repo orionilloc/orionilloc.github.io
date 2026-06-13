@@ -1,14 +1,14 @@
 ---
 layout: post
 title: "Ansible Linux Sandbox - Part 4"
-date: 2026-06-12 11:00:00 -0500
+date: 2026-06-13 11:00:00 -0500
 categories: [Homelab]
 tags: [aws, ansible, terraform, linux, github-actions, ci-cd, oidc]
 media_subpath: /assets/img/AnsibleSandbox4/
 #image: AnsibleSandbox4FrontImage.png
 ---
 
-The code was working well enough that I started thinking about what happened when it wasn't: a PR with broken Terraform formatting or an unqualified module name would merge without complaint, and I would find out whenever I happened to run things locally. Not a great system.
+The code was working well enough that I started thinking about what happened when it wasn't: a PR with broken Terraform formatting or an unqualified module name would merge without complaint, and I would find out whenever I happened to run things locally.
 
 I had watched platform engineers run CI pipelines at clients I support without really understanding what building one involved. Coming into this with no prior CI/CD experience, I worked through it with Claude as a pair and ended up with two GitHub Actions workflows, neither of which touches live infrastructure. One validates and format-checks the Terraform files, the other lints the Ansible files, and both trigger on pull requests targeting `main` scoped to the paths they actually care about.
 
@@ -16,9 +16,11 @@ I had watched platform engineers run CI pipelines at clients I support without r
 
 The Terraform workflow needs to assume an IAM role, and the obvious approach of storing an access key and secret in GitHub secrets is also the wrong one: long-lived credentials in a secret store are a category of risk that has a cleaner answer here.
 
-That answer is OIDC. GitHub Actions has a built-in identity provider that AWS IAM can be configured to trust, so when the workflow runs it requests a short-lived token from GitHub's OIDC endpoint, presents it to AWS STS, and assumes a role without any static credentials in the picture.
+GitHub Actions has a built-in identity provider that AWS IAM can be configured to trust, so when the workflow runs it requests a short-lived token from GitHub's OIDC endpoint, presents it to AWS STS, and assumes a role without any static credentials in the picture.
 
 The AWS side requires registering the GitHub Actions OIDC provider in IAM and creating a role with a trust policy scoped to the specific repository. I had a working draft of the structure and worked through it with Claude to understand what each condition was actually enforcing.
+
+![iam-role-github-actions-ansible-linux-sandbox.png](iam-role-github-actions-ansible-linux-sandbox.png)
 
 ```hcl
 resource "aws_iam_openid_connect_provider" "github_actions" {
@@ -123,6 +125,8 @@ The first failure out of `fmt --check` was spacing inside an IAM policy block:
 
 Running `terraform fmt` locally and diffing the result showed inconsistent indentation inside a `jsonencode` block. The formatter has specific opinions about alignment in those blocks that are easy to get wrong when writing by hand, so running `fmt`, committing the result, and pushing was all it took to clear it.
 
+![TerraformFmt](TerraformFmtValidateFail.png)
+
 ## The Ansible Workflow
 
 `ansible-ci.yml` triggers on the same conditions, scoped to `playbooks/**` and `roles/**`.
@@ -172,15 +176,7 @@ The install step is where most of the first-run failure came from. The roles and
 
 The first run produced this:
 
-```
-WARNING  Listing 6 violation(s) that are fatal
-roles/universal-baseline/tasks/packages.yml:12: fqcn[action-core] Use FQCN for builtin actions.
-roles/universal-baseline/tasks/packages.yml:28: fqcn[action-core] Use FQCN for builtin actions.
-roles/universal-baseline/tasks/system.yml:5: fqcn[action-core] Use FQCN for builtin actions.
-roles/os-hardening/tasks/sshd.yml:2: fqcn[action-core] Use FQCN for builtin actions.
-roles/os-hardening/tasks/filesystem.yml:3: fqcn[action-core] Use FQCN for builtin actions.
-roles/universal-baseline/tasks/updates.yml:4: package-latest
-```
+![AnsibleLintManyErrors](AnsibleLintManyErrors.png)
 
 Two separate problems, and working through the output with Claude clarified what each was enforcing and why they warranted different responses.
 
@@ -220,6 +216,8 @@ The fully-qualified name makes the module source unambiguous: if a custom collec
 ```
 
 Someone reading the file later shouldn't have to wonder whether the rule was forgotten or ignored. After qualifying the module names and adding the `noqa` tags, the workflow passed cleanly.
+
+![AllGreenToGo](AllChecksGreen.png)
 
 ## What the Pipeline Does Not Do
 

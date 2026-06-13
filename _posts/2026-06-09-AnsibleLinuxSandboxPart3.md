@@ -389,6 +389,7 @@ changed: [ansible-lab-SUSE-Managed]
 
 Debian and Ubuntu name the service `ssh`, not `sshd`. The fix is a single task with an inline ternary that resolves the correct name at runtime.
 
+{% raw %}
 ```yaml
 # roles/os-hardening/tasks/sshd.yml
 - name: Stop and disable sshd service
@@ -397,6 +398,8 @@ Debian and Ubuntu name the service `ssh`, not `sshd`. The fix is a single task w
     state: stopped
     enabled: false
 ```
+{% endraw %}
+
 
 AL2023, Fedora, and SUSE use `sshd` and changed cleanly.
 
