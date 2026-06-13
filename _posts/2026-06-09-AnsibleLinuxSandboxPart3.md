@@ -8,22 +8,20 @@ media_subpath: /assets/img/AnsibleSandbox3/
 #image: AnsibleSandbox3FrontImage.png
 ---
 
-By the end of Part 2, I had a functional lab: six nodes, all SSM-connected, no public IPs, with Ansible running over S3-backed session transport. The `inventory.ini` looked clean enough, but didn't stand when needing to terminate and replace resources through terraform.
+I had six nodes now, all SSM-connected, no public IPs, with Ansible running over S3-backed session transport. The `inventory.ini` looked clean enough, but didn't stand on its own when needing to terminate and replace resources through terraform.
 
-Every EC2 instance gets a new instance ID on recreation. That ID is what the SSM connection plugin uses as `ansible_host`. So after a  `terraform apply` with some sort of replace argument tacked on, some of the entries in `inventory.ini` could be inaccurate. I was manually copying a few instance IDs out of the AWS CLI output and pasting them back into a flat file. Definitely not a great idea long-term!
+When replacing any instance, the instance ID gets regenerated, which leads to a bit of a scalability problem. That ID is what the SSM connection plugin uses as the `ansible_host`. For the sake of quick iteration, I was manually copying a few instance IDs out of the AWS CLI output and pasting them back into a flat file. Definitely not a great idea long-term, so I figured there had to be a more effective pattern to adopt.
 
 ```ini
 [al2023]
 node-al2023 ansible_host=i-0a1b2c3d4e5f60001 ansible_user=ec2-user
 ```
 
-That `i-0a1b2c3d4e5f60001` is stale the moment the instance is replaced. This is the kind of thing that feels manageable until it isn't, and it's exactly the problem dynamic inventory exists to solve.
+That `i-0a1b2c3d4e5f60001` in a static `inventory.ini` is stale the moment the instance is replaced using terraform. This is the kind of thing that feels manageable until it isn't, and it's exactly the problem dynamic inventory exists to solve.  The `amazon.aws` collection documentation pointed me toward the `aws_ec2` plugin as the right tool here.
 
 ## Switching to the `aws_ec2` Plugin
 
-The `amazon.aws` collection ships an inventory plugin called `aws_ec2` that queries the AWS API directly and builds your inventory at runtime. There's no static file and no manual updates. When Terraform recreates a node, the next `ansible-inventory --list` reflects it automatically.
-
-The plugin is configured via a YAML file. 
+The `amazon.aws` collection ships an inventory plugin called `aws_ec2` that queries the AWS API directly and builds your inventory at runtime. There's no static file and no manual updates. When Terraform recreates a node, the next `ansible-inventory --list` reflects it automatically. The plugin is configured via a YAML file, which required a fair bit of wrangling after coming from the previous `inventory.ini` implementation. I knew there had to be a way to identify instances dynamically, so defined tags were essential.
 
 ```yaml
 # inventory/aws_ec2.yml
@@ -67,8 +65,6 @@ hostnames:
   - instance-id
 ```
 
-A few things worth explaining here.
-
 The `filters` block limits the query to instances with an `AnsibleGroup` tag matching one of the six known values. This is more explicit than filtering by project tag: only the nodes that are supposed to be in the inventory are pulled in.
 
 The `keyed_groups` block is doing what the group headers in `inventory.ini` used to do manually. Each instance has an `AnsibleGroup` tag set in `main.tf`. The plugin reads that tag and places the instance into a group of the same name. A node tagged `AnsibleGroup: al2023` lands in the `al2023` group automatically.
@@ -90,7 +86,7 @@ One cosmetic issue that showed up early: without the `hostnames` block, hosts we
 changed: [ip-10-0-2-215.ec2.internal]
 ```
 
-Not useful when you're looking at six nodes and trying to figure out which one just failed. Adding `hostnames` to the plugin config fixes this by using the `Name` tag value instead. This one took some digging through the plugin documentation to land on.
+This isn't particularly useful when you're looking at six nodes and trying to figure out which one just failed. Adding `hostnames` to the plugin config fixes this by using the `Name` tag value instead. This one took some digging through the plugin documentation to land on.
 
 ```yaml
 hostnames:
@@ -98,7 +94,7 @@ hostnames:
   - instance-id
 ```
 
-Output reads as `ansible-lab-AL2023-Managed` instead of a private IP.
+The output reads as `ansible-lab-AL2023-Managed` instead of a private IP.
 
 ## Verifying the Plugin
 
