@@ -27,9 +27,9 @@ The first step in any professional cloud deployment is defining a robust organiz
 
 I established a simple, two-account architecture enforced by the AWS Organization root:
 
-- Management Account: Dedicated exclusively to organizational services (Billing, Organizational Unit configuration, and the root of IAM Identity Center). No application workloads reside here.
+- A management account dedicated exclusively to organizational services (Billing, Organizational Unit configuration, and the root of IAM Identity Center). No application workloads reside here.
 
-- Development Account: The secure workspace for all application infrastructure, including the Keycloak deployment.
+- A development account acting as the the secure workspace for all application infrastructure, including the Keycloak deployment.
 
 ![JoinOrgInvitation](JoinOrgInvitation.png)
 
@@ -39,13 +39,13 @@ I established a simple, two-account architecture enforced by the AWS Organizatio
 
 IAM Identity Center (SSO) was deployed at the Organization root to serve as the single source of truth for all authentication, eliminating the need to manage distributed IAM users.
 
-- Dedicated Administrative Roles: To enforce the Principle of Least Privilege (PoLP), I created two distinct administrative groups and assigned them specific access permissions to their respective accounts:
+- To enforce least privilege, I created two distinct administrative groups and assigned them specific access permissions to their respective accounts:
 
   - AdministratorsManagement: Assigned the `AdministratorsAccess` permission set to handle governance tasks (e.g., configuring CloudTrail, managing billing) within the Management Account.
 
   - AdministratorsDevelopment: Assigned the `AdministratorAccess` permission set, strictly scoped to manage and deploy resources (VPC, EC2, IAM) within the Development Account.
 
-- Access Enforcement: All administrative users were provisioned through the Identity Center and mapped to these dedicated groups. All original Root and initial IAM admin accounts were logged out of, meaning all operational access is now strictly funneled through the IAM Identity Center. Fresh credentials were stamped and MFA devices registered.
+-  All administrative users were provisioned through the Identity Center and mapped to these dedicated groups. All original Root and initial IAM admin accounts were logged out of, meaning all operational access is now strictly funneled through the IAM Identity Center. Fresh credentials were stamped and MFA devices registered.
 
 ![EnableIAMIdentityCenter](EnableIAMIdentityCenter.png)
 
@@ -60,7 +60,7 @@ IAM Identity Center (SSO) was deployed at the Organization root to serve as the 
 
 With the identity structure secured, the focus shifted to financial and security governance.
 
-Organizational CloudTrail: I implemented a single Organizational Trail configured from the Management Account. This trail centralizes all management events (API activity) from both the Management and Development accounts into one S3 log bucket.
+I implemented a single Organizational Trail configured from the Management Account. This trail centralizes all management events (API activity) from both the Management and Development accounts into one S3 log bucket.
 
 ![CreateCloudTrailManagement](CreateCloudTrailManagement.png)
 
@@ -72,11 +72,11 @@ Organizational CloudTrail: I implemented a single Organizational Trail configure
 > While the logging of events is complimentary, storage charges apply for the dedicated S3 bucket holding the log files.
 {: .prompt-info }
 
-- Cost Governance: To maintain responsible resource consumption, granular budget alerts were configured on the Development Account:
+- To maintain responsible resource consumption, granular budget alerts were configured on the Development Account:
 
-  - My Zero-Spend Budget: I was thinking back to my AWS courses from Adrian Cantrill and Stephane Maarek. Not exactly useful, considering that the [AWS Free Tier](https://aws.amazon.com/blogs/aws/aws-free-tier-update-new-customers-can-get-started-and-explore-aws-with-up-to-200-in-credits/) has changed considerably in the last few months. Expect to give Jeffrey some of your hard-earned cash unless you have stolen identities lying around or a bunch of virtual phone numbers.
+  - I was thinking back to my AWS courses from Adrian Cantrill and Stephane Maarek. Not exactly useful, considering that the [AWS Free Tier](https://aws.amazon.com/blogs/aws/aws-free-tier-update-new-customers-can-get-started-and-explore-aws-with-up-to-200-in-credits/) has changed considerably in the last few months. Expect to give Jeffrey some of your hard-earned cash unless you have stolen identities lying around or a bunch of virtual phone numbers.
 
-  - My Monthly Cost Budget ($50): Functions as the maximum or upper project spend limit. I added more granular alerts, but didn't expect to go over about $20 for my initial efforts.
+  - A monthly cost budget functions as the maximum or upper project spend limit. I added more granular alerts, but didn't expect to go over about $20 for my initial efforts.
 
 ![BudgetConfigured](BudgetConfigured.png)
 
