@@ -5,7 +5,7 @@ date: 2026-06-06 11:00:00 -0500
 categories: [Homelab]
 tags: [aws, ansible, terraform, linux]
 media_subpath: /assets/img/AnsibleSandbox1/
-#image: AnsibleSandbox1FrontImage.png
+image: AnsibleLinuxSandbox1FrontImage.jpg
 ---
 
 The Linux sysadmin role has been quietly absorbing DevOps tooling for the better part of a decade. If you have been doing this long enough, you have watched the job description shift underneath you. Or so the internet tells me. Shell scripts that used to be good enough started looking brittle next to configuration management tools. SSH key management at scale stopped being a reasonable answer. The expectation that you could just log into a box and fix something by hand started feeling like a liability rather than a skill. It seems like all of the older DevOps/Platform/Infrastructure Engineers working at clients I support are just Linux sysadmins flexing their latest RPG job class advancement after 10-20 years in the field.

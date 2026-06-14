@@ -5,7 +5,7 @@ date: 2026-06-13 11:00:00 -0500
 categories: [Homelab]
 tags: [aws, ansible, terraform, linux, github-actions, ci-cd, oidc]
 media_subpath: /assets/img/AnsibleSandbox4/
-#image: AnsibleSandbox4FrontImage.png
+image: AnsibleLinuxSandbox4FrontImage.jpg
 ---
 
 The code was working well enough that I started thinking about what happened when it wasn't: a PR with broken Terraform formatting or an unqualified module name would merge without complaint, and I would find out whenever I happened to run things locally.

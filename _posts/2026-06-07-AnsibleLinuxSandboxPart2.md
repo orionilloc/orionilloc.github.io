@@ -5,7 +5,7 @@ date: 2026-06-07 11:00:00 -0500
 categories: [Homelab]
 tags: [aws, ansible, terraform, linux, ssm]
 media_subpath: /assets/img/AnsibleSandbox2/
-#image: AnsibleSandbox2FrontImage.png
+image: AnsibleLinuxSandbox2FrontImage.jpg
 ---
 
 Part 1 left me with a working lab, but my control node had a public IP with SSH open to the world. Private keys were being written to disk at boot time and HEREDOC'd into user-data scripts. It worked, but it was held together with the kind of decisions you make when you just want to see green check marks and deal with the rest later.

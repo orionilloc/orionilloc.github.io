@@ -5,7 +5,7 @@ date: 2026-06-08 11:00:00 -0500
 categories: [Homelab]
 tags: [aws, ansible, terraform, linux, ssm, roles, playbooks, openscap]
 media_subpath: /assets/img/AnsibleSandbox3/
-#image: AnsibleSandbox3FrontImage.png
+image: AnsibleLinuxSandbox3FrontImage.jpg
 ---
 
 I had six nodes now, all SSM-connected, no public IPs, with Ansible running over S3-backed session transport. The `inventory.ini` looked clean enough, but didn't stand on its own when needing to terminate and replace resources through terraform.
