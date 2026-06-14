@@ -26,28 +26,28 @@ I opted for a pragmatic, single-server monolithic architecture built around one 
 
 The `networking.tf` file defines my custom VPC while ensuring external connectivity. Security group rules are specified later in `security.tf`. This is fairly barebones.
 
-- Custom VPC: The `aws_vpc` resource creates a private, isolated network using the `10.0.0.0/16` CIDR block. Bigger is better!
-- Internet Gateway (IGW): The `aws_internet_gateway` resource is provisioned and attached to the VPC, allowing traffic to flow in and out of our custom network.
-- Public Subnet: The `aws_subnet` resource, created in the first Availability Zone `${var.region}a`, is configured with `map_public_ip_on_launch = true`.
-- Routing: The `aws_route_table` directs all external traffic `0.0.0.0/0` to the IGW. The final `aws_route_table_association` links the public subnet to this routing table, making it a fully functional public network segment.
-- Elastic IP (EIP) & Route 53: To ensure the public domain name (`auth.tonymacaronis.net`) is always resolved to the correct host regardless of instance changes, we allocate an Elastic IP (`aws_eip.keycloak_eip`) and assign it to the EC2 instance. The Route 53 record then targets this static EIP (`dns.tf`).
+- The `aws_vpc` resource creates a private, isolated network using the `10.0.0.0/16` CIDR block. Bigger is better for my custom VPC!
+- The `aws_internet_gateway` resource is provisioned and attached to the VPC, allowing traffic to flow in and out of our custom network.
+- The `aws_subnet` resource, created in the first Availability Zone `${var.region}a`, is configured with `map_public_ip_on_launch = true`.
+- The `aws_route_table` directs all external traffic `0.0.0.0/0` to the IGW. The final `aws_route_table_association` links the public subnet to this routing table, making it a fully functional public network segment.
+- To ensure the public domain name (`auth.tonymacaronis.net`) is always resolved to the correct host regardless of instance changes, we allocate an Elastic IP (`aws_eip.keycloak_eip`) and assign it to the EC2 instance. The Route 53 record then targets this static EIP (`dns.tf`).
 
 ### dns.tf 
 
 The `dns.tf` file ensures that our Keycloak instance has a fixed public address that is reliably resolved by our purchased domain and/or configured subdomains. This is essential for the IdP's public-facing nature and for the TLS certificate validation process.
 
-- Zone Lookup: The data `aws_route53_zone` resource dynamically looks up the existing public hosted zone (like tonymacaronis.net) managed in AWS. This prevents hardcoding the Zone ID and makes the module reusable.
-- Elastic IP (EIP): The `aws_eip` resource allocates a static IP address in AWS and attaches it to the provisioned EC2 instance. The EIP guarantees the public IP address won't change upon reboot or instance replacement, maintaining service continuity.
-- A Record: The `aws_route53_record` resource creates the `auth` subdomain record, pointing its Type A value to the public IP of the Elastic IP resource. The low TTL of 300 seconds allows for quick DNS updates if maintenance is required.
+- The data `aws_route53_zone` resource dynamically looks up the existing public hosted zone (like tonymacaronis.net) managed in AWS. This prevents hardcoding the Zone ID and makes the module reusable.
+- The `aws_eip` resource allocates a static IP address in AWS and attaches it to the provisioned EC2 instance. The EIP guarantees the public IP address won't change upon reboot or instance replacement, maintaining service continuity.
+- The `aws_route53_record` resource creates the `auth` subdomain record, pointing its Type A value to the public IP of the Elastic IP resource. The low TTL of 300 seconds allows for quick DNS updates if maintenance is required.
 
 ### security.tf
 
 The `security.tf` file handles both the EC2 instance key pair generation and the security group rules that define network access.
 
-- Key Pair Generation: We use the tls_private_key resource to generate a new RSA key pair locally, register the public key with AWS (`aws_key_pair`), and save the private key (`keycloak-lab-key.pem`) to the local module path with restricted permissions (0400). This is crucial for initial SSH access.
-- IP Discovery: The data "`http`" "`my_ip`" resource dynamically retrieves my current public IP address at plan time.
-- Public Access: Ingress is allowed on ports 80 and 443 from `0.0.0.0/0` to allow client logins and, crucially, enable Certbot (the ACME client) to validate the domain and issue a public TLS certificate.
-- Restricted SSH: The security group restricts SSH (Port 22) to only my dynamically discovered IP address. All outbound traffic is permitted by default.
+- We use the tls_private_key resource to generate a new RSA key pair locally, register the public key with AWS (`aws_key_pair`), and save the private key (`keycloak-lab-key.pem`) to the local module path with restricted permissions (0400). This is crucial for initial SSH access.
+- The data "`http`" "`my_ip`" resource dynamically retrieves my current public IP address at plan time.
+- Ingress is allowed on ports 80 and 443 from `0.0.0.0/0` to allow client logins and, crucially, enable Certbot (the ACME client) to validate the domain and issue a public TLS certificate.
+- The security group restricts SSH (Port 22) to only my dynamically discovered IP address. All outbound traffic is permitted by default.
 
 > Restricting port 22 access to a single, dynamic public IP is a known Single Point of Failure (SPOF) for operational access. If my home IP changes or I need access from an unallowed location, I am locked out. For a production-ready environment, the solution would technically involve AWS Systems Manager (SSM) Session Manager, which completely eliminates the need for public SSH access. I have implemented this access option elsewhere, but I still wanted SSH around!
 {: .prompt-warning }
@@ -56,33 +56,33 @@ The `security.tf` file handles both the EC2 instance key pair generation and the
 
 These files decouple the infrastructure logic from the environment-specific values. The `variables.tf` file defines the schema, while the `terraform.tfvars` file provides the actual values used for deployment.
 
-- Deployment Profile: We specify the AWS Region (us-east-1) and the local AWS CLI profile to ensure all resources are deployed to the correct account and region.
-- Naming and Compute: The `project_name` (keycloak-lab) is used as a prefix for all created resources (VPC, Security Group, EIP, etc.) to aid in resource management and cleanup. The instance_type is set to t3.small for our SPOF launchpad.
-- Public Access: Variables for the `domain_name` and `certbot_email` are critical, as they are used to configure Route 53 and to provision the public TLS certificate at runtime.
+- We specify the AWS Region (us-east-1) and the local AWS CLI profile to ensure all resources are deployed to the correct account and region.
+- The `project_name` (keycloak-lab) is used as a prefix for all created resources (VPC, Security Group, EIP, etc.) to aid in resource management and cleanup. The instance_type is set to t3.small for our SPOF launchpad.
+- Variables for the `domain_name` and `certbot_email` are critical, as they are used to configure Route 53 and to provision the public TLS certificate at runtime.
 
 ### secrets.tf 
 
 This file is central to the project's security model, ensuring that sensitive data is never stored in plain text and is only retrieved at runtime by the intended EC2 instance. 
 
-- Random Password Generation: We use the `random_password` resource for the PostgreSQL database password and the Keycloak administrative password. This guarantees high-entropy secrets that are unique to this deployment.
-- SecureString Storage: All sensitive values (DB user/password, Keycloak admin user/password) are stored in AWS SSM Parameter Store as `SecureString` types.
-- KMS Encryption: By setting `key_id = "alias/aws/ssm"`, the secrets are encrypted at rest using a default AWS KMS key managed by the SSM service. The EC2 instance will later use its IAM role (defined in `iam.tf`) to read and decrypt these secrets.
+- We use the `random_password` resource for the PostgreSQL database password and the Keycloak administrative password. This guarantees high-entropy secrets that are unique to this deployment.
+- All sensitive values (DB user/password, Keycloak admin user/password) are stored in AWS SSM Parameter Store as `SecureString` types.
+- By setting `key_id = "alias/aws/ssm"`, the secrets are encrypted at rest using a default AWS KMS key managed by the SSM service. The EC2 instance will later use its IAM role (defined in `iam.tf`) to read and decrypt these secrets.
 
 ### outputs.tf 
 
 The `outputs.tf` file defines the key pieces of information returned to the console after a successful `terraform apply`. This makes it easy to immediately access the newly provisioned resources.
 
-- Public IP and URL: The public IP of the Keycloak instance (`ec2_public_ip`) is outputted, along with the expected final URL (`keycloak_url`).
-- SSH Key Path: The path to the locally saved private key (`private_key_path`) is provided, which is necessary for the operator to SSH into the instance to perform any manual debugging or maintenance.
+- The public IP of the Keycloak instance (`ec2_public_ip`) is outputted, along with the expected final URL (`keycloak_url`).
+- The path to the locally saved private key (`private_key_path`) is provided, which is necessary for the operator to SSH into the instance to perform any manual debugging or maintenance.
 
 ### main.tf
 
 The `main.tf` file defines the core compute resource—the EC2 instance—and implements the architectural choice for data persistence, decoupling the PostgreSQL data from the operating system's root volume.
 
-- Provider and AMI: The provider block configures the AWS profile and region. A data source dynamically fetches the latest Amazon Linux 2023 AMI, ensuring we always use a current, patched base image for the EC2 instance.
-- EC2 Instance Definition: The `aws_instance` resource links together everything we've built so far: the security group, the key pair, the public subnet, and the desired instance type (t3.small). Crucially, it links to the IAM Instance Profile, enabling the Principle of Least Privilege (PoLP) for secret retrieval.
-- Defining User Data: The entire application setup—from mounting the data volume to running Docker and configuring Nginx—is handled by the `user_data.sh` script. We use the templatefile function to inject dynamic variables (like the domain and project name) into the shell script at launch time, making the script portable and environment-aware.
-- Data Decoupling: We create a separate, independent EBS volume (`aws_ebs_volume`) and use an `aws_volume_attachment` resource to attach it to the EC2 instance as the device `/dev/xvdf`. This guarantees that if the Keycloak EC2 instance is terminated, the PostgreSQL data is preserved and can be quickly remounted to a new instance.
+- The provider block configures the AWS profile and region. A data source dynamically fetches the latest Amazon Linux 2023 AMI, ensuring we always use a current, patched base image for the EC2 instance.
+- The `aws_instance` resource links together everything we've built so far: the security group, the key pair, the public subnet, and the desired instance type (t3.small). Crucially, it links to the IAM Instance Profile, enabling the Principle of Least Privilege (PoLP) for secret retrieval.
+- The entire application setup—from mounting the data volume to running Docker and configuring Nginx—is handled by the `user_data.sh` script. We use the templatefile function to inject dynamic variables (like the domain and project name) into the shell script at launch time, making the script portable and environment-aware.
+- We create a separate, independent EBS volume (`aws_ebs_volume`) and use an `aws_volume_attachment` resource to attach it to the EC2 instance as the device `/dev/xvdf`. This guarantees that if the Keycloak EC2 instance is terminated, the PostgreSQL data is preserved and can be quickly remounted to a new instance.
 
 ## Conclusion
 
