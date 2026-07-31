@@ -1,6 +1,6 @@
 ---
 layout: post
-title: AWS Keycloak Lab - Part 1
+title: Keycloak on EC2 - Part 1
 date: 2025-10-06 11:09:00 -500
 categories: [Homelab]
 tags: [aws,idp,cloud,keycloak,iam]     # TAG names should always be lowercase
@@ -86,4 +86,4 @@ I implemented a single Organizational Trail configured from the Management Accou
 
 This concludes the foundational setup phase. The environment is secured, financially contained, and ready for infrastructure definition after conducting additional research.
 
-The subsequent post will transition entirely to Infrastructure as Code (IaC) using Terraform. Before settling on the initial architecture, significant research was conducted into critical components like secrets management with SSM Parameter Store and KMS, domain and certificate provisioning with Route 53 and Certbot, and the necessary EC2 user data for Keycloak containerization. We will begin the deep technical review of this Terraform code and end with my initial Single Point of Failure (SPOF) architecture that will serve as our launchpad for future High Availability (HA) refactoring.
+The subsequent post will transition entirely to Infrastructure as Code (IaC) using Terraform. Before settling on the initial architecture, significant research was conducted into critical components like secrets management with SSM Parameter Store and KMS, domain and certificate provisioning with Route 53 and Certbot, and the necessary EC2 user data for Keycloak containerization. We will begin the deep technical review of this Terraform code and end with my initial single point of failure architecture that will serve as our launchpad for future high availability refactoring.
