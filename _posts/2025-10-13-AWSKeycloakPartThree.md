@@ -1,6 +1,6 @@
 ---
 layout: post
-title: AWS Keycloak Lab - Part 3
+title: Keycloak on EC2 - Part 3
 date: 2025-10-09 11:09:00 -500
 categories: [Homelab]
 tags: [aws,idp,cloud,keycloak,postgres,terraform,scripting]     # TAG names should always be lowercase
